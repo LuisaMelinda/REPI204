@@ -1,0 +1,282 @@
+---
+title: "Self Grading - HW 2"
+author: "Maria Luisa Klobongona"
+format: pdf
+editor: visual
+---
+# Total Points: 24/24 (100)
+
+```{r}
+library(knitr) # compiling .qmd files
+library(pander) # format tables for markdown
+library(ggplot2) # graphics
+library(ggeasy) # help with graphics: 
+# - `ggeasy::easy_labs()` applies same logic as `ggplot2::labs()` but uses as default the "label" attribute, if present, as the variable label in the plot."
+library(dplyr) # manipulate data
+library(haven) # import Stata files
+library(tidyr) # Tools to help to create tidy data
+library(plotly) # interactive graphics
+library(dobson) # datasets from Dobson and Barnett 2018
+library(parameters) # format model output tables for markdown
+library(conflicted) # check for conflicting function definitions
+library(magrittr) # `%>%` and other additional piping tools
+library(ggfortify)
+```
+
+
+
+# 1 Definitions
+
+## 1.1 (2 points)
+
+Memorize and write down from memory the definition of the standard error of an estimator𝜃, using natural-language prose (do not use any math symbols other than𝜃 for this sub-section).
+
+The standard error of an estimator𝜃is the standard deviation of the error of that estimator (𝜃).
+
+## 1.2 (2 pointss)
+
+Memorize and write down from memory the definition of the standard error of an estimator𝜃, using mathematical notation.
+
+$$
+SE(\hat{\theta})=SD (\hat{\theta})
+$$
+
+# 2 Linear Regression
+
+(Adapted from Dobson & Barnett, 2018, ex. 6.4)
+
+It is well known that the concentration of cholesterol in blood serum increases with age, but it is less clear whether cholesterol level is also associated with body weight. The cholesterol dataset in the dobson package contains serum cholesterol (chol, millimoles per liter), age (age, years) and body mass index (bmi, weight divided by height squared, where weight was measured in kilograms and height in meters), for thirty women.
+
+```{r}
+library(pander)
+ library(dobson)
+ data(cholesterol, package = "dobson")
+ head(cholesterol) |> pander()
+```
+
+## 2.1 (2 points)
+
+Create scatterplots of the bivariate relationships between these variables.
+
+```{r}
+#| label: fig-1
+#| fig-cap: "Scatterplots of the bivariate relationships"
+library(GGally)
+ggpairs(cholesterol)
+```
+
+```{r}
+pairs(cholesterol)
+```
+
+## 2.2 (2 points)
+
+Use multiple regression to assess whether serum cholesterol might be associated with body mass index, adjusting for age. Interpret the coefficient estimates, and state your scientific conclusions.
+
+```{r}
+chol_lm <- lm(chol ~ bmi + age, data = cholesterol)
+#summary (chol_lm)
+chol_lm |> parameters()|> print_md()
+```
+
+The Intercept ($\beta_{0})$: The mean serum cholesterol millimoles per liter is -0.74 when the body mass index and age is 0.The p-value for intercept is not significant, the interpration does not practically matter and applicable.
+
+The Slope coefficient of bmi ($\beta_{1})$: The difference in the mean serum cholesterol per one kg/m difference in body mass index was 0.20 millimoles per liter, holding the age constant.
+
+The slope coefficient of age ($\beta_{2})$: The average difference in mean serum cholesterol levels associated with a one-year difference in age was 0.04 millimoles per liter, while controlling for the effects of bmi.
+
+Because the p-value for BMI was smaller than $\alpha=0.5$ (p=0.03), we reject the null and conclude that there is enough evidence that there is significant and positive association between BMI and the serum cholesterol, after adjusting for age. The p-value for age was also smaller than $\alpha=0.5$ (p=0.006), we reject the null and conclude there is enough evidence that there is significant and positive association between age and the serum cholesterol.
+
+## 2.3 (2 points)
+
+Does the relationship between BMI and cholesterol depend on age? To answer this question, add an interaction term and refit the model. Interpret the coefficient estimates, and state your scientific conclusions.
+
+```{r}
+chol_lm2 <- lm(chol ~ bmi + age + bmi:age, data = cholesterol)
+chol_lm2|> parameters() |> print_md()
+```
+
+The Intercept ($\beta_{0})$: The mean serum cholesterol was -6.55 millimoles per liter when the body mass index and age are 0. This p-value is not significant and intercept is also not interpretable.
+
+The Slope coefficient of bmi ($\beta_{1})$: The difference in the mean serum cholesterol per one kg/m difference in body mass index was 0.46 millimoles per liter, holding the age constant.
+
+The slope coefficient of age ($\beta_{2})$: The difference in mean serum cholesterol levels associated with a one-year difference in age was 0.15 millimoles per liter, while controlling for the effects of bmi.
+
+The slope coefficient of age and bmi ($\beta_{3})$: The difference in mean serum cholesterol levels for 1 kg/m difference in bmi at different ages was -4.93e-03. Since the p-value is 0.512, this differential effect is not statistically significant, suggesting no enough evidence to conclude that there is influence of bmi on serum cholesterol across different age in the population studied.
+
+Because the p-value for all slopes is greater than $\alpha=0.5$, we rejected the null and stated we did not have enough evidence to conclude that bmi, age, and the interaction of bmi and age have a significant association with the difference in mean serum cholesterol.
+
+## 2.4 (2 points)
+
+If you haven’t already done so, improve the precision of your coefficient estimates by recentering the covariates as needed. Reinterpret the coefficient estimates and state your revised scientific conclusions.
+
+```{r}
+chol= cholesterol %>%
+  mutate(
+age.c = age - mean(age), # mean age = 50.7
+bmi.c = bmi - mean(bmi) # mean bmi = 23.18
+)
+
+chol_lm3 <- lm(chol ~ bmi.c + age.c + bmi.c:age.c, data = chol)
+chol_lm3|> parameters() |> print_md()
+```
+
+Here, we recentered the age and bmi by its mean (age-50.7, bmi-23.18) to the model with interaction of age and bmi. Then, the coefficient estimate as below;
+
+The Intercept ($\beta_{0})$: The mean serum cholesterol was 6.07 millimoles per liter when the body mass index is 23.18 kg/m and age are 50.7. The intercept is significantly different from zero (p \< .001), suggesting a high mean serum cholesterol level at the mean values of BMI and age.
+
+The Slope coefficient of bmi ($\beta_{1})$: The slope of BMI is statistically significant with p-value of 0.03 less than $\alpha$ of 0.05 suggesting that the difference in the mean serum cholesterol per one kg/m difference in body mass index from its mean was 0.21 millimoles per liter, holding the age constant at its mean (50.7)
+
+The slope coefficient of age ($\beta_{2})$: The slope of age is statistically significant with p-value of 0.008 less than $\alpha$ of 0.05 suggesting the difference in mean serum cholesterol levels is significantly associated with a one-year difference in age from its mean was 0.04 millimoles per liter, while controlling for the effects of bmi at its mean.
+
+The slope coefficient of age and bmi ($\beta_{3})$: The difference in mean serum cholesterol levels for 1 kg/m difference in bmi from its mean at different ages was -4.93e-03. Since the p-value is 0.512, this differential effect is not statistically significant, suggesting no enough evidence to conclude that there is influence of bmi on serum cholesterol across different age in the population studied.
+
+Because the p-value for all slopes is greater than $\alpha=0.5$, we failed to reject the null and stated we did not have enough evidence to conclude the interaction of bmi and age have a significant association with the difference in mean serum cholesterol. This means the relationship between BMI and serum cholesterol does not significantly change at different levels of age, vice versa. the BMI and
+
+## 2.5 (2 points)
+
+How did centering change your results?
+
+We found that recentering the covariates still did not improved the interaction of age and bmi. However, each covariate individually improved, here, the p-values of age and bmi are smaller than significantly different from 0, indicating a positive association between both BMI and age with serum cholesterol levels when considering the mean values of these predictors.
+
+## 2.6 (2 points)
+
+Create graphs of regression diagnostics for your final model, and assess whether it seems to be a good model.
+
+```{r}
+
+autoplot(chol_lm3)
+```
+
+The Residuals vs Fitted plot shows no clear pattern, which is good. However, a couple of points stand out, which might be outliers or influential points i.e 25
+
+The Q-Q plot still shows some deviation from normality at the tails, especially for the points labeled 8, 17 and 25.
+
+Scale-Location: This plot is showing a pattern that suggests possible heteroscedasticity, as the spread of the residuals increases with the fitted values.
+
+Residuals vs Leverage: at least one point with high leverage, but it doesn’t appear to have a large residual. The points labeled as 17, 25, and 26 might be a potential outliers
+
+## 2.7 (2 points)
+
+Try at least one change to the model that might improve the fit
+
+```{r}
+chol_lm4 <- lm(log(chol) ~ bmi.c + age.c + bmi.c:age.c, data = chol)
+autoplot(chol_lm4)
+
+```
+
+I modified the previous model by taking the log of cholesterol (y) in the model with centering covariates and interaction term of bmi and age. Here, the modified model did not have much improvement.
+
+Residuals vs Fitted: The residuals appear randomly scattered around the horizontal line,but there are same outliers or influential points are still visible.
+
+Normal Q-Q: The Q-Q plot still shows some deviation from normality at the tails, especially for the points labeled 24, 8, and 25, but the overall alignment along the line appears consistent.
+
+Scale-Location: This plot is showing a pattern that suggests possible heteroscedasticity, as the spread of the residuals still increases with the fitted values.
+
+Residuals vs Leverage: Point 24 has high leverage and a large residual, making it potentially influential. Points 17 and 20 also stand out, although to a lesser extent.
+
+# 3 Stratification
+
+```{r}
+data("birthweight", package= "dobson")
+ 
+bw=
+ birthweight|>
+ pivot_longer(
+ cols= everything(),
+ names_to= c("sex",".value"),
+ names_sep= "s "
+ ) |>
+ rename(age = 'gestational age') |> 
+  mutate(
+ sex = ifelse( sex== "boy", "male","female"))
+
+lm.bw= lm(weight ~ sex + sex:age - 1, data= bw)
+ lm.bw|> parameters() |>print_md()
+```
+
+Fittting two separate model, one for each sex:
+
+```{r}
+ lm.bw.male=lm(
+ formula= weight ~age,
+ data = bw |> dplyr::filter(sex =="male"))
+ lm.bw.male|>parameters() |> print_md()
+```
+
+```{r}
+lm.bw.female= lm(
+ formula= weight ~ age,
+ data = bw |> dplyr::filter(sex =="female"))
+ lm.bw.female|> parameters()|> print_md()
+```
+
+## 3.1 (2 points)
+What is the key difference between this stratified approach and the interaction model above?
+
+```{r}
+sigma(lm.bw)
+sigma(lm.bw.male)
+sigma(lm.bw.female)
+```
+
+The standard error of each model is different. the model with only male has the largest standard error (200.92) compared to the full model with both male and female (180.62) and the model with only female (157.71). standard error change once we startified the model by sex.
+
+```{r}
+ library(survival)
+ lm.bw.strat=survreg(
+ Surv(time= weight) ~sex+ strata(sex) +sex:age + 0,
+ data = bw,
+ dist = "gaussian")
+ lm.bw.strat|> parameters() |> print_md()
+```
+
+The last two coefficients are the logs of $\hat{\theta}$ parameters for females and males, respectively. So we can get out the exponential version like so:
+
+```{r}
+ lm.bw.strat$scale
+```
+
+If we multiply by sqrt(12/10), we will get unbiased estimates instead of MLEs:
+
+```{r}
+lm.bw.strat$scale * sqrt(12/10)
+```
+
+## 3.2 (2 points)
+
+Compare these estimates to the ones we got from lm.bw.female and lm.bw.male above. Are they the same?
+
+these estimates gave the same result to the one we got from m.bw.female (157.7105) and lm.bw.male(200.9225).
+
+## 3.3 (2 points)
+
+This survreg() approach has given us some extra information- namely, SEs and confidence intervals for the logarithms of the $\hat{\theta}$ estimates. If you exponentiate the CIs, you’ll have get 95% confidence intervals for $\hat{\theta}$. Do that, and state your scientific conclusions about $\hat{\theta}_{male}$ and $\hat{\theta}_{female}$.
+
+```{r}
+
+exp(4.57) #lower CI female
+exp(5.37) #upper CI female
+
+exp(4.81) #lower CI male 
+exp(5.61) #upper CI male
+```
+
+```{r}
+female.SE= sqrt(lm.bw.strat$var[5,5])
+male.SE= sqrt(lm.bw.strat$var[6,6])
+
+Female.CI=exp(log(lm.bw.strat$scale[1])+c(-1,1)*qnorm(0.975)*(female.SE))
+
+Male.CI=exp(log(lm.bw.strat$scale[2])+c(-1,1)*qnorm(0.975)*(male.SE))
+
+Female.CI
+Male.CI
+```
+
+the CI calculated in the previous question (lm.bw.strat) is in log scale, so we exponentiated the CI to get the CI in its original scale/normal scale. Based on the result above, the interpretation would be:
+
+for female, we are 95% confidence that the true value of the birthweight falls between the range of 96.49 and 214.79.
+
+for male, we are 95% confidence that the true value of the baby's birthweight falls between the range of 122.93 and 273.64.
